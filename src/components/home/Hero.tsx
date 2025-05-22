@@ -53,7 +53,7 @@ const Hero: React.FC = () => {
       }`}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 items-center">
           <div className="max-w-2xl py-4 sm:py-8 lg:py-0 order-2 lg:order-1">
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight sm:leading-none tracking-tighter mb-3 sm:mb-6">
+            <h1 className="text-3xl sm:text-6xl md:text-6xl lg:text-7xl font-bold leading-tight sm:leading-none tracking-tighter mb-3 sm:mb-6">
               <span className="glitch-text" data-text="ELEVATE">ELEVATE</span>
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600">

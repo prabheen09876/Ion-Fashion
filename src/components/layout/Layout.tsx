@@ -14,7 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* <BackgroundText className="opacity-50" /> */}
       </div>
       <Navbar />
-      <main className="flex-grow relative sm:pt-0 pt-[10vh]">
+      <main className="flex-grow relative pt-20 sm:pt-16">
         {children}
       </main>
       <Footer />

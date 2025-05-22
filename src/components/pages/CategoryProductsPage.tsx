@@ -119,6 +119,64 @@ const productDatabase: Product[] = [
     price: 105,
     imageUrl: 'https://images.pexels.com/photos/6311271/pexels-photo-6311271.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
     description: 'Our textured yoga leggings provide both style and performance with moisture-wicking fabric and a supportive fit.'
+  },
+  
+  // Accessories
+  {
+    id: 501,
+    name: 'Elegant Leather Gloves',
+    category: 'Accessories',
+    productType: 'Gloves',
+    price: 45,
+    imageUrl: 'https://images.pexels.com/photos/46239/pexels-photo-46239.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'Crafted from premium leather, these elegant gloves offer both style and practicality for cooler weather, with a soft lining for additional comfort.'
+  },
+  {
+    id: 502,
+    name: 'Classic Leather Belt',
+    category: 'Accessories',
+    productType: 'Belts',
+    price: 55,
+    imageUrl: 'https://images.pexels.com/photos/45055/pexels-photo-45055.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'This timeless leather belt features a classic buckle design and durable construction for everyday wear.'
+  },
+  {
+    id: 503,
+    name: 'Wool Winter Scarf',
+    category: 'Accessories',
+    productType: 'Scarves',
+    price: 35,
+    imageUrl: 'https://images.pexels.com/photos/45924/pexels-photo-45924.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'Stay warm and stylish with this premium wool scarf featuring a classic pattern and soft texture.'
+  },
+  
+  // Footwear
+  {
+    id: 601,
+    name: 'Classic Leather Boots',
+    category: 'Footwear',
+    productType: 'Boots',
+    price: 180,
+    imageUrl: 'https://images.pexels.com/photos/267242/pexels-photo-267242.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'These timeless leather boots combine durability with sophisticated style, perfect for both casual and semi-formal occasions.'
+  },
+  {
+    id: 602,
+    name: 'Running Performance Shoes',
+    category: 'Footwear',
+    productType: 'Athletic',
+    price: 120,
+    imageUrl: 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'Engineered for performance, these running shoes feature responsive cushioning and breathable materials for maximum comfort during workouts.'
+  },
+  {
+    id: 603,
+    name: 'Casual Canvas Sneakers',
+    category: 'Footwear',
+    productType: 'Sneakers',
+    price: 65,
+    imageUrl: 'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260',
+    description: 'These versatile canvas sneakers offer laid-back style with all-day comfort, perfect for casual everyday wear.'
   }
 ];
 
@@ -150,6 +208,10 @@ const CategoryProductsPage: React.FC = () => {
   const { category, productType } = useParams<{ category: string; productType: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [productTypes, setProductTypes] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedProductType, setSelectedProductType] = useState<string | null>(null);
 
   useEffect(() => {
     // In a real app, this would be an API call with proper filtering
@@ -160,18 +222,30 @@ const CategoryProductsPage: React.FC = () => {
       setTimeout(() => {
         let filteredProducts = [...productDatabase];
         
-        if (category) {
+        if (category && category !== 'all') {
           filteredProducts = filteredProducts.filter(p => 
             p.category.toLowerCase() === category.toLowerCase()
           );
+          setSelectedCategory(category);
+        } else {
+          setSelectedCategory(null);
         }
         
         if (productType) {
           filteredProducts = filteredProducts.filter(p => 
             p.productType.toLowerCase() === productType.toLowerCase()
           );
+          setSelectedProductType(productType);
+        } else {
+          setSelectedProductType(null);
         }
         
+        // Extract unique categories and product types for filters
+        const uniqueCategories = Array.from(new Set(productDatabase.map(p => p.category)));
+        const uniqueProductTypes = Array.from(new Set(productDatabase.map(p => p.productType)));
+        
+        setCategories(uniqueCategories);
+        setProductTypes(uniqueProductTypes);
         setProducts(filteredProducts);
         setIsLoading(false);
       }, 500);
@@ -179,6 +253,26 @@ const CategoryProductsPage: React.FC = () => {
 
     fetchProducts();
   }, [category, productType]);
+
+  const handleCategoryFilter = (cat: string | null) => {
+    if (cat === selectedCategory) {
+      // If clicking the already selected category, clear the filter
+      window.location.href = productType ? `/category/all/${productType}` : '/category/all';
+    } else {
+      // Apply the new category filter
+      window.location.href = productType ? `/category/${cat}/${productType}` : `/category/${cat}`;
+    }
+  };
+
+  const handleProductTypeFilter = (type: string | null) => {
+    if (type === selectedProductType) {
+      // If clicking the already selected product type, clear the filter
+      window.location.href = category ? `/category/${category}` : '/category/all';
+    } else {
+      // Apply the new product type filter
+      window.location.href = category && category !== 'all' ? `/category/${category}/${type}` : `/category/all/${type}`;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -210,11 +304,68 @@ const CategoryProductsPage: React.FC = () => {
     <div className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="mb-12">
         <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-          {productType || category || 'All Products'}
+          {productType || category === 'all' ? 'All Products' : category || 'All Products'}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 mb-6">
           {products.length} {products.length === 1 ? 'product' : 'products'} available
         </p>
+        
+        {/* Filter Section */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <div>
+            <h3 className="text-sm font-medium mb-2">Categories</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={`px-3 py-1 text-sm rounded-full border ${
+                  !selectedCategory ? 'bg-black text-white' : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onClick={() => handleCategoryFilter(null)}
+              >
+                All
+              </button>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  className={`px-3 py-1 text-sm rounded-full border ${
+                    selectedCategory?.toLowerCase() === cat.toLowerCase() 
+                      ? 'bg-black text-white' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onClick={() => handleCategoryFilter(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Product Types</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={`px-3 py-1 text-sm rounded-full border ${
+                  !selectedProductType ? 'bg-black text-white' : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onClick={() => handleProductTypeFilter(null)}
+              >
+                All
+              </button>
+              {productTypes.map(type => (
+                <button
+                  key={type}
+                  className={`px-3 py-1 text-sm rounded-full border ${
+                    selectedProductType?.toLowerCase() === type.toLowerCase() 
+                      ? 'bg-black text-white' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onClick={() => handleProductTypeFilter(type)}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8">

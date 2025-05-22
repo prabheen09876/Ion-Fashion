@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, ShoppingBag, User, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useCart } from '../../context/CartContext';
 
 interface NavbarProps {
   className?: string;
@@ -11,6 +12,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { state } = useCart();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,10 +62,12 @@ const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
                 <User size={20} />
               </button>
               
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 hover:border-gray-300/70">
+              <Link to="/cart" className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 hover:border-gray-300/70 inline-flex items-center justify-center">
                 <ShoppingBag size={20} />
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-black text-white text-xs flex items-center justify-center">0</span>
-              </button>
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-black text-white text-xs flex items-center justify-center">
+                  {state?.items?.length || 0}
+                </span>
+              </Link>
             </div>
 
             {/* Mobile menu button */}
@@ -72,10 +76,12 @@ const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
                 <Search size={20} />
               </button>
               
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50">
+              <Link to="/cart" className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 inline-flex items-center justify-center">
                 <ShoppingBag size={20} />
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-black text-white text-xs flex items-center justify-center">0</span>
-              </button>
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-black text-white text-xs flex items-center justify-center">
+                  {state?.items?.length || 0}
+                </span>
+              </Link>
               
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
