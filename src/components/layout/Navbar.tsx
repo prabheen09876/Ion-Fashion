@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Search, ShoppingBag, User, Menu, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, ShoppingBag, User, Menu, X, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   className?: string;
-  children?: React.ReactNode;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
+const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { state } = useCart();
+  const { state: authState, logout } = useAuth();
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,6 +25,24 @@ const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setIsProfileMenuOpen(false);
+  };
 
   return (
     <div className="w-full fixed top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
@@ -58,9 +79,47 @@ const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               </div>
               
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 hover:border-gray-300/70">
-                <User size={20} />
-              </button>
+              <div className="relative" ref={profileMenuRef}>
+                <button 
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 hover:border-gray-300/70"
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                >
+                  <User size={20} />
+                </button>
+                
+                {isProfileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-10 border border-gray-200">
+                    {authState.isAuthenticated ? (
+                      <>
+                        <div className="px-4 py-2 border-b border-gray-100">
+                          <p className="text-sm font-medium">{authState.user?.displayName || 'User'}</p>
+                          <p className="text-xs text-gray-500 truncate">{authState.user?.email}</p>
+                        </div>
+                        {authState.isAdmin && (
+                          <Link to="/admin" className="block px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 border-b border-gray-100">
+                            Admin Dashboard
+                          </Link>
+                        )}
+                        <Link to="/account" className="block px-4 py-2 text-sm hover:bg-gray-50">My Account</Link>
+                        <Link to="/orders" className="block px-4 py-2 text-sm hover:bg-gray-50">My Orders</Link>
+                        <Link to="/wishlist" className="block px-4 py-2 text-sm hover:bg-gray-50">Wishlist</Link>
+                        <button 
+                          onClick={handleLogout}
+                          className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                        >
+                          <LogOut size={16} className="mr-2" />
+                          Logout
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link to="/login" className="block px-4 py-2 text-sm hover:bg-gray-50">Login</Link>
+                        <Link to="/register" className="block px-4 py-2 text-sm hover:bg-gray-50">Register</Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <Link to="/cart" className="p-2 rounded-full hover:bg-gray-100 transition-colors relative border border-gray-200/50 hover:border-gray-300/70 inline-flex items-center justify-center">
                 <ShoppingBag size={20} />
@@ -114,10 +173,45 @@ const Navbar: React.FC<NavbarProps> = ({ className = '', children }) => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                <Button variant="primary" size="md" className="w-full mb-2 rounded-xl border border-transparent hover:border-gray-800/10">
-                  <User size={16} className="mr-2" />
-                  Login / Register
-                </Button>
+                {authState.isAuthenticated ? (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-gray-50 rounded-xl">
+                      <p className="font-medium">{authState.user?.displayName || 'User'}</p>
+                      <p className="text-xs text-gray-500 truncate">{authState.user?.email}</p>
+                    </div>
+                    {authState.isAdmin && (
+                      <Link to="/admin" className="block w-full text-left px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg mb-2">
+                        Admin Dashboard
+                      </Link>
+                    )}
+                    <Link to="/account" className="block w-full text-left px-3 py-2 text-sm">
+                      My Account
+                    </Link>
+                    <Link to="/orders" className="block w-full text-left px-3 py-2 text-sm">
+                      My Orders
+                    </Link>
+                    <button 
+                      onClick={handleLogout}
+                      className="flex items-center w-full text-left px-3 py-2 text-sm text-red-600"
+                    >
+                      <LogOut size={16} className="mr-2" />
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Link to="/login">
+                      <Button variant="primary" size="md" className="w-full mb-2 rounded-xl border border-transparent hover:border-gray-800/10">
+                        Login
+                      </Button>
+                    </Link>
+                    <Link to="/register">
+                      <Button variant="outline" size="md" className="w-full rounded-xl">
+                        Register
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>

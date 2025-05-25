@@ -3,58 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import BackgroundText from '../ui/BackgroundText';
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  imageUrl: string;
-}
-
-const products: Product[] = [
-  {
-    id: 1,
-    name: 'Classic Cotton Hoodie',
-    category: 'Men',
-    price: 120,
-    imageUrl: 'https://images.pexels.com/photos/1183266/pexels-photo-1183266.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  },
-  {
-    id: 2,
-    name: 'Slim Fit Leggings',
-    category: 'Women',
-    price: 90,
-    imageUrl: 'https://images.pexels.com/photos/7998296/pexels-photo-7998296.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  },
-  {
-    id: 3,
-    name: 'Designer Vest',
-    category: 'Men',
-    price: 150,
-    imageUrl: 'https://images.pexels.com/photos/1589818/pexels-photo-1589818.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  },
-  {
-    id: 4,
-    name: 'Modern Track Jacket',
-    category: 'Women',
-    price: 135,
-    imageUrl: 'https://images.pexels.com/photos/4380970/pexels-photo-4380970.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  },
-  {
-    id: 5,
-    name: 'Elegant Leather Gloves',
-    category: 'Accessories',
-    price: 45,
-    imageUrl: 'https://images.pexels.com/photos/46239/pexels-photo-46239.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  },
-  {
-    id: 6,
-    name: 'Basic Signature T-shirt',
-    category: 'Men',
-    price: 75,
-    imageUrl: 'https://images.pexels.com/photos/2385477/pexels-photo-2385477.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260'
-  }
-];
+import { getFeaturedProducts, Product } from '../../supabase/productService';
 
 const ProductCard: React.FC<{ product: Product; index: number }> = ({ product, index }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -90,11 +39,10 @@ const ProductCard: React.FC<{ product: Product; index: number }> = ({ product, i
     <Link to={`/product/${product.id}`} className="block">
       <div
         ref={cardRef}
-        className={`group transition-all duration-700 transform ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-        }`}
+        className={`group transition-all duration-700 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
       >
-       
+
         <div className="relative overflow-hidden rounded-lg mb-4">
           <img
             src={product.imageUrl}
@@ -116,19 +64,41 @@ const ProductCard: React.FC<{ product: Product; index: number }> = ({ product, i
 };
 
 const FeaturedCollection: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
-  
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getFeaturedProducts(6);
+        setProducts(data);
+      } catch (err) {
+        setError('Failed to load featured products.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   const scrollLeft = () => {
     if (sliderRef.current) {
       sliderRef.current.scrollBy({ left: -300, behavior: 'smooth' });
     }
   };
-  
+
   const scrollRight = () => {
     if (sliderRef.current) {
       sliderRef.current.scrollBy({ left: 300, behavior: 'smooth' });
     }
   };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <section className="py-12 sm:py-16 md:py-20 bg-white">
@@ -141,13 +111,13 @@ const FeaturedCollection: React.FC = () => {
             </p>
           </div>
           <div className="hidden md:flex space-x-2 mt-4 sm:mt-0">
-            <button 
+            <button
               onClick={scrollLeft}
               className="p-2 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
-            <button 
+            <button
               onClick={scrollRight}
               className="p-2 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors"
             >
@@ -156,7 +126,7 @@ const FeaturedCollection: React.FC = () => {
           </div>
         </div>
 
-        <div 
+        <div
           ref={sliderRef}
           className="flex space-x-4 sm:space-x-6 overflow-x-auto pb-6 sm:pb-8 hide-scrollbar snap-x"
         >

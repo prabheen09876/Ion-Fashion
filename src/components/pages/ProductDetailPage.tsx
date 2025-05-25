@@ -3,29 +3,30 @@ import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { Button } from '../ui/Button';
 import { ShoppingBag, Heart } from 'lucide-react';
-
-// Import your product database or API
-// import { productDatabase } from '../data/products'; // Adjust this path as needed
+import { getProductById } from '../../services/api';
 
 const ProductDetailPage: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const [product, setProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { dispatch } = useCart();
   
   useEffect(() => {
-    // In a real app, this would be an API call
-    const fetchProduct = () => {
+    const fetchProduct = async () => {
       setIsLoading(true);
+      setError(null);
       
-      // Simulate API delay
-      setTimeout(() => {
-        // Find the product by ID
-        const foundProduct = productDatabase.find(p => p.id === parseInt(productId || '0'));
-        setProduct(foundProduct);
+      try {
+        const data = await getProductById(productId || '0');
+        setProduct(data);
+      } catch (err) {
+        setError('Failed to load product. Please try again later.');
+        console.error('Error fetching product:', err);
+      } finally {
         setIsLoading(false);
-      }, 500);
+      }
     };
     
     fetchProduct();
@@ -62,6 +63,18 @@ const ProductDetailPage: React.FC = () => {
           <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
           <div className="h-64 w-full max-w-md bg-gray-200 rounded"></div>
         </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="py-16 px-4 min-h-[60vh] flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold mb-4">Error</h2>
+        <p className="text-gray-600 mb-8 text-center">{error}</p>
+        <Link to="/category/all" className="inline-block px-6 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors">
+          Browse Products
+        </Link>
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { Button } from '../ui/Button';
 import { CreditCard, Calendar, Lock } from 'lucide-react';
+import { createOrder } from '../../services/api';
 
 const PaymentPage: React.FC = () => {
   const { state, dispatch } = useCart();
@@ -17,6 +18,7 @@ const PaymentPage: React.FC = () => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,27 +68,44 @@ const PaymentPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
     setIsProcessing(true);
+    setPaymentError(null);
     
-    // Simulate payment processing
-    setTimeout(() => {
-      // In a real app, you would integrate with a payment gateway here
-      console.log('Payment processed:', paymentData);
+    try {
+      // Create order data
+      const orderData = {
+        items: state.items,
+        totalAmount: state.totalPrice + (state.totalPrice > 100 ? 0 : 5.99) + (state.totalPrice * 0.08),
+        paymentMethod: 'Credit Card',
+        paymentDetails: {
+          // In a real app, you would use a payment gateway and not send card details directly
+          // This is just for demonstration
+          lastFourDigits: paymentData.cardNumber.slice(-4)
+        }
+      };
+      
+      // Send order to API
+      const response = await createOrder(orderData);
       
       // Clear cart and redirect to confirmation
       dispatch({ type: 'CLEAR_CART' });
       navigate('/order-confirmation', { 
         state: { 
-          orderId: 'ORD' + Math.floor(Math.random() * 1000000),
+          orderId: response.id,
           paymentMethod: 'Credit Card'
         } 
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      setPaymentError('There was an error processing your payment. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
   if (state.items.length === 0) {
@@ -97,6 +116,12 @@ const PaymentPage: React.FC = () => {
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">Payment</h1>
+      
+      {paymentError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+          {paymentError}
+        </div>
+      )}
       
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <form onSubmit={handleSubmit}>

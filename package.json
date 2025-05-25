@@ -7,13 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "create-admin": "tsx src/scripts/createAdmin.ts"
   },
   "dependencies": {
     "@studio-freight/lenis": "^1.0.42",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/auth-helpers-react": "^0.5.0",
+    "@supabase/supabase-js": "^2.49.8",
     "@tabler/icons-react": "^3.31.0",
+    "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^11.8.1",
     "lucide-react": "^0.344.0",
     "motion": "^12.12.1",
     "react": "^18.3.1",

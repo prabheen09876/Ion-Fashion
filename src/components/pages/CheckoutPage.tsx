@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { Button } from '../ui/Button';
+import { orderService } from '../../services/api';
+
 
 const CheckoutPage: React.FC = () => {
   const { state, dispatch } = useCart();
@@ -48,26 +50,74 @@ const CheckoutPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
-    // In a real app, you would send this data to your backend
-    console.log('Order submitted:', { formData, items: state.items });
-    
-    // Redirect to payment page based on payment method
-    if (formData.paymentMethod === 'card') {
-      navigate('/payment');
-    } else {
-      // For COD, directly create order and show confirmation
-      dispatch({ type: 'CLEAR_CART' });
-      navigate('/order-confirmation', { 
-        state: { 
-          orderId: 'ORD' + Math.floor(Math.random() * 1000000),
-          paymentMethod: 'Cash on Delivery'
-        } 
-      });
+    try {
+      // Create order object
+      const orderData = {
+        items: state.items.map(item => ({
+          productId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          imageUrl: item.imageUrl
+        })),
+        totalAmount: state.totalAmount + state.totalAmount * 0.18,
+        shippingAddress: {
+          fullName: formData.fullName,
+          addressLine1: formData.addressLine1,
+          addressLine2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          phoneNumber: formData.phone
+        },
+        billingAddress: formData.sameAsBilling ? {
+          fullName: formData.fullName,
+          addressLine1: formData.addressLine1,
+          addressLine2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          phoneNumber: formData.phone
+        } : {
+          // If not same as shipping, you would have separate billing fields
+          fullName: formData.fullName,
+          addressLine1: formData.addressLine1,
+          addressLine2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          phoneNumber: formData.phone
+        },
+        paymentMethod: formData.paymentMethod
+      };
+      
+      // Send order to API
+      const response = await createOrder(orderData);
+      
+      // Redirect based on payment method
+      if (formData.paymentMethod === 'card') {
+        navigate('/payment', { state: { orderId: response.data.id } });
+      } else {
+        // For COD, directly show confirmation
+        dispatch({ type: 'CLEAR_CART' });
+        navigate('/order-confirmation', { 
+          state: { 
+            orderId: response.data.id,
+            paymentMethod: 'Cash on Delivery'
+          } 
+        });
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      // Handle error (show error message to user)
     }
   };
   
