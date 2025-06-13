@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Users, Package, BarChart2, Loader } from 'lucide-react';
-import { getDashboardStats, getTopSellingProducts, getRecentOrders } from '../../../supabase/analyticsService';
+import { getDashboardStats, getTopSellingProducts, getRecentOrders } from '../../../services/analyticsService';
 
 interface StatCardProps {
   title: string;

@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/config';
+import { supabase } from '../lib/supabaseClient';
 
 // This script updates an existing user to have admin privileges
 // Replace with the email of the user you want to make an admin

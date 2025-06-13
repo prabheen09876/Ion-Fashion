@@ -2,8 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import BackgroundText from '../ui/BackgroundText';
-import { getFeaturedProducts, Product } from '../../supabase/productService';
+import { getFeaturedProducts, Product } from '../../services/productService';
 
 const ProductCard: React.FC<{ product: Product; index: number }> = ({ product, index }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -74,9 +73,11 @@ const FeaturedCollection: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getFeaturedProducts(6);
-        setProducts(data);
+        const data = await getFeaturedProducts();
+        // Take first 6 featured products
+        setProducts(data.slice(0, 6));
       } catch (err) {
+        console.error('Error fetching featured products:', err);
         setError('Failed to load featured products.');
       } finally {
         setIsLoading(false);

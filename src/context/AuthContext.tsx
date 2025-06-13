@@ -1,246 +1,293 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { supabase } from '../supabase/config';
-import { getCurrentUser, loginUser, logoutUser, registerUser, User } from '../supabase/authService';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { User, Session, AuthChangeEvent, AuthError, AuthResponse } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 
-// Define auth state
-type AuthState = {
-  isAuthenticated: boolean;
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  isAdmin: boolean;
+type AuthUser = User & {
+  user_metadata?: {
+    isAdmin?: boolean;
+    full_name?: string;
+    [key: string]: any;
+  };
 };
 
-// Define auth actions
-type AuthAction =
-  | { type: 'AUTH_STATE_CHANGED'; payload: User | null }
-  | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: User }
-  | { type: 'LOGIN_FAILURE'; payload: string }
-  | { type: 'REGISTER_START' }
-  | { type: 'REGISTER_SUCCESS'; payload: User }
-  | { type: 'REGISTER_FAILURE'; payload: string }
-  | { type: 'LOGOUT' }
-  | { type: 'CLEAR_ERROR' };
+type AuthState = {
+  user: AuthUser | null;
+  session: Session | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  error: string | null;
+};
 
-// Define auth context type
 type AuthContextType = {
-  state: AuthState;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => void;
-  resetPassword: (email: string) => Promise<void>;
+  user: AuthUser | null;
+  session: Session | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  error: string | null;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, userData?: Record<string, any>) => Promise<{ error: AuthError | null }>;
+  signOut: () => Promise<{ error: AuthError | null }>;
   clearError: () => void;
 };
 
-// Initial state
-const initialState: AuthState = {
-  isAuthenticated: false,
-  user: null,
-  loading: true, // Start with loading true to prevent flash of unauthenticated content
-  error: null,
-  isAdmin: false
-};
-
-// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Reducer function
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'AUTH_STATE_CHANGED':
-      return {
-        ...state,
-        isAuthenticated: !!action.payload,
-        user: action.payload,
-        loading: false,
-        isAdmin: action.payload?.role === 'admin' || false
-      };
-    case 'LOGIN_START':
-    case 'REGISTER_START':
-      return {
-        ...state,
-        loading: true,
-        error: null
-      };
-    case 'LOGIN_SUCCESS':
-    case 'REGISTER_SUCCESS':
-      // Log the user data to help with debugging
-      console.log('User authenticated:', action.payload);
-      console.log('User role:', action.payload?.role);
-      
-      return {
-        ...state,
-        isAuthenticated: true,
-        user: action.payload,
-        loading: false,
-        error: null,
-        // Ensure admin role is properly set
-        isAdmin: action.payload?.role === 'admin'
-      };
-    case 'LOGIN_FAILURE':
-    case 'REGISTER_FAILURE':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        loading: false,
-        error: action.payload,
-        isAdmin: false
-      };
-    case 'LOGOUT':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        isAdmin: false
-      };
-    case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null
-      };
-    default:
-      return state;
-  }
-};
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    session: null,
+    loading: true,
+    isAuthenticated: false,
+    isAdmin: false,
+    error: null,
+  });
 
-// Provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
-
-  // Listen for Supabase auth state changes
+  // Handle auth state changes
   useEffect(() => {
-    // Set up auth state listener
+    // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_, session) => {
-        if (session) {
-          try {
-            // Get user data from the database
-            const userData = await getCurrentUser();
-            dispatch({ type: 'AUTH_STATE_CHANGED', payload: userData });
-          } catch (error) {
-            console.error('Error getting user data:', error);
-            dispatch({ type: 'AUTH_STATE_CHANGED', payload: null });
-          }
-        } else {
-          dispatch({ type: 'AUTH_STATE_CHANGED', payload: null });
+      async (event: AuthChangeEvent, session: Session | null) => {
+        console.log('Auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' && session) {
+          const { data: { user } } = await supabase.auth.getUser();
+          const isAdmin = user?.user_metadata?.isAdmin === true;
+          
+          setState({
+            user: user as AuthUser,
+            session,
+            loading: false,
+            isAuthenticated: true,
+            isAdmin,
+            error: null,
+          });
+        } else if (event === 'SIGNED_OUT') {
+          setState({
+            user: null,
+            session: null,
+            loading: false,
+            isAuthenticated: false,
+            isAdmin: false,
+            error: null,
+          });
+        } else if (event === 'INITIAL_SESSION') {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+          }));
         }
       }
     );
 
-    // Initial auth check
-    const checkAuth = async () => {
+    // Check for existing session on mount
+    const checkSession = async () => {
       try {
-        const userData = await getCurrentUser();
-        dispatch({ type: 'AUTH_STATE_CHANGED', payload: userData });
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          const { data: { user } } = await supabase.auth.getUser();
+          const isAdmin = user?.user_metadata?.isAdmin === true;
+          
+          setState({
+            user: user as AuthUser,
+            session: currentSession,
+            loading: false,
+            isAuthenticated: true,
+            isAdmin,
+            error: null,
+          });
+        } else {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            isAuthenticated: false,
+          }));
+        }
       } catch (error) {
-        console.error('Error checking auth state:', error);
-        dispatch({ type: 'AUTH_STATE_CHANGED', payload: null });
+        console.error('Error checking session:', error);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Failed to check authentication status',
+        }));
       }
     };
-    
-    checkAuth();
 
-    // Cleanup subscription on unmount
+    checkSession();
+
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
-  // Login with Supabase
-  const login = async (email: string, password: string) => {
-    dispatch({ type: 'LOGIN_START' });
-    try {
-      // DEVELOPMENT BYPASS: Skip actual authentication for development
-      // This is a temporary solution to bypass Supabase authentication issues
-      if (process.env.NODE_ENV !== 'production' && 
-          (email.toLowerCase() === 'admin@example.com' || 
-           email.toLowerCase() === 'admin.ionfashion@gmail.com')) {
-        
-        console.log('DEV MODE: Bypassing authentication for admin user');
-        
-        // Create a mock user with admin privileges
-        const mockUser = {
-          id: 'dev-admin-id',
-          email: email,
-          displayName: 'Admin User',
-          role: 'admin' as 'admin' // Type assertion to match the User interface
-        };
-        
-        dispatch({ type: 'LOGIN_SUCCESS', payload: mockUser });
-        return;
-      }
-      
-      // Normal authentication flow
-      const user = await loginUser(email, password);
-      
-      // Force admin privileges for specific users
-      if (email.toLowerCase() === 'admin@example.com' || 
-          email.toLowerCase() === 'admin.ionfashion@gmail.com') {
-        console.log('Admin privileges granted for:', email);
-        user.role = 'admin';
-      }
-      
-      dispatch({ type: 'LOGIN_SUCCESS', payload: user });
-    } catch (error: any) {
-      let errorMessage = 'An error occurred during login. Please try again.';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
-    }
-  };
+  const clearError = useCallback(() => {
+    setState(prev => ({ ...prev, error: null }));
+  }, []);
 
-  // Register with Supabase
-  const register = async (email: string, password: string, displayName: string) => {
-    dispatch({ type: 'REGISTER_START' });
+  const signIn = useCallback(async (email: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
     try {
-      const user = await registerUser(email, password, displayName);
-      dispatch({ type: 'REGISTER_SUCCESS', payload: user });
-    } catch (error: any) {
-      let errorMessage = 'An error occurred during registration. Please try again.';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      dispatch({ type: 'REGISTER_FAILURE', payload: errorMessage });
-    }
-  };
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim(),
+      });
 
-  // Logout with Supabase
-  const logout = async () => {
-    try {
-      await logoutUser();
-      dispatch({ type: 'LOGOUT' });
+      if (error) {
+        console.error('Sign in error:', error);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: error.message || 'Failed to sign in',
+        }));
+        return { error };
+      }
+
+      // Get fresh user data to ensure we have the latest metadata
+      const { data: { user } } = await supabase.auth.getUser();
+      const isAdmin = user?.user_metadata?.isAdmin === true;
+
+      setState({
+        user: user as AuthUser,
+        session: data.session,
+        loading: false,
+        isAuthenticated: true,
+        isAdmin,
+        error: null,
+      });
+
+      return { error: null };
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Unexpected error during sign in:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      return { error: { message: errorMessage } as AuthError };
     }
-  };
+  }, []);
 
-  // Reset password with Supabase
-  const resetPassword = async (email: string) => {
+  const signUp = useCallback(async (email: string, password: string, userData: Record<string, any> = {}) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      throw error;
-    }
-  };
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password.trim(),
+        options: {
+          data: {
+            ...userData,
+            // Default metadata for new users
+            created_at: new Date().toISOString(),
+          },
+        },
+      });
 
-  const clearError = () => {
-    dispatch({ type: 'CLEAR_ERROR' });
+      if (error) {
+        console.error('Sign up error:', error);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: error.message || 'Failed to sign up',
+        }));
+        return { error };
+      }
+
+      // If email confirmation is required, we don't sign in automatically
+      if (data.user) {
+        const isAdmin = data.user.user_metadata?.isAdmin === true;
+        
+        setState(prev => ({
+          ...prev,
+          user: data.user as AuthUser,
+          session: data.session,
+          loading: false,
+          isAuthenticated: true,
+          isAdmin,
+          error: null,
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: null,
+        }));
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Unexpected error during sign up:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      return { error: { message: errorMessage } as AuthError };
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true }));
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error:', error);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: error.message || 'Failed to sign out',
+        }));
+        return { error };
+      }
+
+      setState({
+        user: null,
+        session: null,
+        loading: false,
+        isAuthenticated: false,
+        isAdmin: false,
+        error: null,
+      });
+
+      return { error: null };
+    } catch (error) {
+      console.error('Unexpected error during sign out:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      return { error: { message: errorMessage } as AuthError };
+    }
+  }, []);
+
+  const value = {
+    ...state,
+    signIn,
+    signUp,
+    signOut,
+    clearError,
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, register, logout, resetPassword, clearError }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!state.loading ? children : (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Loader, Eye, Trash2, Mail } from 'lucide-react';
-import { Button } from '../../ui/Button';
-import { getAllCustomers, deleteCustomer, Customer } from '../../../supabase/customerService';
+import { getAllCustomers, deleteCustomer, Customer } from '../../../services/customerService';
+
+// Extend the Customer interface to include additional properties used in the component
+interface ExtendedCustomer extends Customer {
+  totalOrders?: number;
+  totalSpent?: number;
+}
+
 
 const CustomerList: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<ExtendedCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -52,9 +58,7 @@ const CustomerList: React.FC = () => {
   };
 
   // Format currency
-  const formatCurrency = (amount: number | undefined) => {
-    if (amount === undefined) return '₹0';
-    
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -63,22 +67,37 @@ const CustomerList: React.FC = () => {
   };
 
   // Format date
-  const formatDate = (date: Date | undefined) => {
-    if (!date) return 'Unknown';
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return 'Unknown';
     
-    return new Intl.DateTimeFormat('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(new Date(date));
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      return date.toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (customer.firstName && customer.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (customer.lastName && customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter customers based on search term
+  const filteredCustomers = customers.filter(customer => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      customer.full_name?.toLowerCase().includes(searchLower) ||
+      customer.email?.toLowerCase().includes(searchLower) ||
+      customer.phone?.toLowerCase().includes(searchLower) ||
+      customer.address?.toLowerCase().includes(searchLower) ||
+      customer.city?.toLowerCase().includes(searchLower) ||
+      customer.country?.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (isLoading) {
     return (
@@ -145,20 +164,20 @@ const CustomerList: React.FC = () => {
                 filteredCustomers.map(customer => (
                   <tr key={customer.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500 font-medium">
-                            {customer.displayName.charAt(0).toUpperCase()}
-                          </span>
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                          {customer.full_name 
+                            ? customer.full_name.charAt(0).toUpperCase()
+                            : customer.email 
+                              ? customer.email.charAt(0).toUpperCase()
+                              : 'U'}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {customer.displayName}
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {customer.full_name || 'Unnamed Customer'}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {customer.firstName && customer.lastName 
-                              ? `${customer.firstName} ${customer.lastName}`
-                              : 'No name provided'}
+                          <div className="text-sm text-gray-500">
+                            {formatDate(customer.created_at)}
                           </div>
                         </div>
                       </div>
@@ -167,13 +186,13 @@ const CustomerList: React.FC = () => {
                       {customer.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(customer.createdAt)}
+                      {formatDate(customer.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {customer.totalOrders || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(customer.totalSpent)}
+                      {customer.totalSpent ? formatCurrency(customer.totalSpent) : '₹0'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

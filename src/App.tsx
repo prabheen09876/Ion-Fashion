@@ -12,6 +12,7 @@ import PaymentPage from './components/pages/PaymentPage';
 import OrderConfirmationPage from './components/pages/OrderConfirmationPage';
 import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
+import AuthTest from './components/debug/AuthTest';
 import Dashboard from './components/pages/admin/Dashboard';
 import ProductList from './components/pages/admin/ProductList';
 import ProductForm from './components/pages/admin/ProductForm';
@@ -20,12 +21,14 @@ import CustomerList from './components/pages/admin/CustomerList';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import { SetupAdmin } from './components/SetupAdmin';
 
 const App: React.FC = () => {
   useLenis();
 
   return (
     <AuthProvider>
+       <SetupAdmin/>
       <CartProvider>
         <BrowserRouter>
           <Routes>
@@ -58,6 +61,9 @@ const App: React.FC = () => {
               </Route>
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
+              {/* Debug route - remove in production */}
+              <Route path="debug/auth" element={<AuthTest />} />
+              <Route path="*" element={<div>Not Found</div>} />
             </Route>
           </Routes>
         </BrowserRouter>

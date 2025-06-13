@@ -7,10 +7,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requireAdmin = false }) => {
-  const { state } = useAuth();
+  const { loading, isAuthenticated, isAdmin } = useAuth();
   const location = useLocation();
 
-  if (state.loading) {
+  if (loading) {
     // Show loading state while checking authentication
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -19,12 +19,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requireAdmin = false })
     );
   }
 
-  if (!state.isAuthenticated) {
+  if (!isAuthenticated) {
     // Redirect to login if not authenticated
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
-  if (requireAdmin && !state.isAdmin) {
+  if (requireAdmin && !isAdmin) {
     // Redirect to home if admin access is required but user is not an admin
     return <Navigate to="/" replace />;
   }

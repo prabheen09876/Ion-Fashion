@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Edit, Trash2, Search, Plus, Loader } from 'lucide-react';
 import { Button } from '../../ui/Button';
-import { getAllProducts, deleteProduct, Product } from '../../../supabase/productService';
+import { getAllProducts, deleteProduct, Product } from '../../../services/productService';
 
 // Using the Product type from Supabase service
 
@@ -38,11 +38,8 @@ const ProductList: React.FC = () => {
       try {
         setDeleteLoading(id);
         setError(null);
-        // Find the product to get its imageUrl
-        const product = products.find(p => p.id === id);
-
         // Delete the product from Supabase
-        await deleteProduct(id, product?.imageUrl);
+        await deleteProduct(id);
 
         // Update local state
         setProducts(products.filter(product => product.id !== id));
@@ -55,11 +52,14 @@ const ProductList: React.FC = () => {
     }
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.productType.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(product => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      product.name.toLowerCase().includes(searchLower) ||
+      product.category.toLowerCase().includes(searchLower) ||
+      (product.productType?.toLowerCase() || '').includes(searchLower)
+    );
+  });
 
   if (isLoading) {
     return (

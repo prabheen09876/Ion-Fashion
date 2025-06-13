@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminNav: React.FC = () => {
-  const { state } = useAuth();
+  const { user, loading } = useAuth();
   
   // Only show admin navigation if user is authenticated and has admin role
-  if (!state.isAuthenticated || !state.isAdmin) {
+  if (loading || !user || !user.user_metadata?.isAdmin) {
     return null;
   }
   

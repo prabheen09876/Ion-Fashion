@@ -14,8 +14,10 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { state } = useCart();
-  const { state: authState, logout } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  
+  const isAdmin = user?.user_metadata?.isAdmin || false;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,8 +41,8 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
     };
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     setIsProfileMenuOpen(false);
   };
 
@@ -89,13 +91,13 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
                 
                 {isProfileMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-10 border border-gray-200">
-                    {authState.isAuthenticated ? (
+                    {user ? (
                       <>
                         <div className="px-4 py-2 border-b border-gray-100">
-                          <p className="text-sm font-medium">{authState.user?.displayName || 'User'}</p>
-                          <p className="text-xs text-gray-500 truncate">{authState.user?.email}</p>
+                          <p className="text-sm font-medium">{user.email?.split('@')[0] || 'User'}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
-                        {authState.isAdmin && (
+                        {isAdmin && (
                           <Link to="/admin" className="block px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 border-b border-gray-100">
                             Admin Dashboard
                           </Link>
@@ -173,13 +175,13 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {authState.isAuthenticated ? (
+                {user ? (
                   <div className="space-y-2">
                     <div className="p-3 bg-gray-50 rounded-xl">
-                      <p className="font-medium">{authState.user?.displayName || 'User'}</p>
-                      <p className="text-xs text-gray-500 truncate">{authState.user?.email}</p>
+                      <p className="font-medium">{user.email?.split('@')[0] || 'User'}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
-                    {authState.isAdmin && (
+                    {isAdmin && (
                       <Link to="/admin" className="block w-full text-left px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg mb-2">
                         Admin Dashboard
                       </Link>
