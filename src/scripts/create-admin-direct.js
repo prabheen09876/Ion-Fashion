@@ -7,7 +7,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 // Admin user details - you can change these
 // Using a Gmail address which is more likely to pass validation
-const ADMIN_EMAIL = 'admin.ionfashion@gmail.com';
+const ADMIN_EMAIL = 'admin@ionstore.com';
 const ADMIN_PASSWORD = 'AdminPass123!';
 const ADMIN_NAME = 'ION Admin';
 

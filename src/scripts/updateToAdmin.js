@@ -10,7 +10,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Replace with the email of the user you want to make an admin
-const USER_EMAIL = 'admin.ionfashion@gmail.com';
+const USER_EMAIL = 'admin@ionstore.com';
 
 const updateUserToAdmin = async () => {
   try {

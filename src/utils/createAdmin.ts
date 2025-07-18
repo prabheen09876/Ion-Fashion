@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export async function createAdminUser() {
   const { data, error } = await supabase.auth.signUp({
-    email: 'admin.ionfashion@gmail.com',
+    email: 'admin@ionstore.com',
     password: 'AdminPass123!',
     options: {
       data: {
