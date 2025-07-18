@@ -34,7 +34,12 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+type AuthProviderProps = {
+  children: React.ReactNode;
+  onReady?: () => void;
+};
+
+export const AuthProvider = ({ children, onReady }: AuthProviderProps) => {
   const [state, setState] = useState<AuthState>({
     user: null,
     session: null,
@@ -46,10 +51,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Handle auth state changes
   useEffect(() => {
+    console.log('AuthProvider: Initializing auth state');
+    let isMounted = true;
+    
     // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         console.log('Auth state changed:', event);
+        
+        if (!isMounted) return;
         
         if (event === 'SIGNED_IN' && session) {
           const { data: { user } } = await supabase.auth.getUser();
@@ -63,6 +73,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isAdmin,
             error: null,
           });
+          
+          if (onReady) onReady();
         } else if (event === 'SIGNED_OUT') {
           setState({
             user: null,
@@ -72,11 +84,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isAdmin: false,
             error: null,
           });
+          
+          if (onReady) onReady();
         } else if (event === 'INITIAL_SESSION') {
           setState(prev => ({
             ...prev,
             loading: false,
           }));
+          
+          if (onReady) onReady();
         }
       }
     );
@@ -84,7 +100,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Check for existing session on mount
     const checkSession = async () => {
       try {
+        console.log('AuthProvider: Checking for existing session');
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
         if (currentSession) {
           const { data: { user } } = await supabase.auth.getUser();
           const isAdmin = user?.user_metadata?.isAdmin === true;
@@ -104,22 +124,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isAuthenticated: false,
           }));
         }
+        
+        if (onReady) onReady();
       } catch (error) {
         console.error('Error checking session:', error);
+        
+        if (!isMounted) return;
+        
         setState(prev => ({
           ...prev,
           loading: false,
           error: 'Failed to check authentication status',
         }));
+        
+        if (onReady) onReady();
       }
     };
 
     checkSession();
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [onReady]);
 
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
@@ -281,6 +309,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {!state.loading ? children : (
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="ml-3 text-gray-600">Loading authentication state...</p>
         </div>
       )}
     </AuthContext.Provider>
