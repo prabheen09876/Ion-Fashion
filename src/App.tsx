@@ -54,9 +54,6 @@ const App: React.FC = () => {
       )}
       
       <AuthProvider onReady={handleAuthReady}>
-        {/* Only render SetupAdmin in development */}
-        {import.meta.env.DEV && <SetupAdmin />}
-        
         <CartProvider>
           <BrowserRouter>
             <Routes>
